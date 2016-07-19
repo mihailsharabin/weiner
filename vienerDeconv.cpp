@@ -77,3 +77,12 @@ void blur_edge(cv::Mat img, cv::Mat blurred, int d){
 	prefinal.release();
 	anti_pref.release();
 }
+
+int Min(int* arr, int len){
+	if (len == 1){
+		return arr[0];
+	}
+	else {
+		return (arr[0] < Min(arr + 1, len - 1)) ? arr[0] : Min(arr + 1, len - 1);
+	}
+}
