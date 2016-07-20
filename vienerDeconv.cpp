@@ -117,37 +117,48 @@ cv::Mat defocus_kernel(int d, int sz){
 	return kern;
 }
 
+
+//deconvolve works with images, read in grayscale mode, 
+//converted to CV_32F and divided by 255
 cv::Mat deconvolve(cv::Mat img, bool defocus, int d, int ang, int noise, int sz){
-	double ang_radians = ang * M_PI / 180.;
 	double snr = pow(10, -0.1*noise);
 	cv::Mat IMG;
 	cv::dft(img, IMG, cv::DFT_COMPLEX_OUTPUT);
 	cv::Mat psf;
 
-	psf = defocus_kernel(d, sz);
+	if (defocus)
+		psf = defocus_kernel(d, sz);
+	else
+		psf = motion_kernel(ang, d, sz);
 
 	cv::namedWindow("psf", cv::WINDOW_NORMAL);
-	cv::imshow("psf", psf);
-	//problems with dft types!
+	//	cv::imshow("psf", psf);
+
 	cv::divide(psf, cv::norm(psf, cv::NORM_L1), psf);
 	cv::Mat psf_pad = cv::Mat::zeros(img.rows, img.cols, CV_32FC1);
 	int kh = psf.rows;
 	int kw = psf.cols;
-	psf_pad(cv::Range(0, kh), cv::Range(0, kw)) = psf;
+
+	//	psf_pad(cv::Range(0, kh), cv::Range(0, kw)) = psf;
+	cv::Mat ptr = psf_pad.colRange(cv::Range(0, kw)).rowRange(cv::Range(0, kh));
+	psf.copyTo(ptr);
+	cv::imshow("psf", psf_pad);
+
 	cv::Mat PSF;
 	cv::dft(psf_pad, PSF, cv::DFT_COMPLEX_OUTPUT, kh);
-	cv::Mat row_summator = cv::Mat::ones(PSF.cols, PSF.cols, CV_32FC1);
-	cv::Mat PSF2 = cv::Mat::zeros(PSF.rows, PSF.cols, CV_32FC1);
+	cv::Mat row_summator = cv::Mat::ones(PSF.cols, PSF.cols, PSF.type());
+	cv::Mat PSF2 = cv::Mat::zeros(PSF.rows, PSF.cols, PSF.type());
 	cv::multiply(PSF, PSF, PSF2);
-	cv::gemm(PSF2, row_summator, 1, cv::Mat::zeros(PSF.rows, PSF.cols, CV_32FC1), 0, PSF2);
-	cv::gemm(PSF2, cv::Mat::eye(PSF.cols, PSF.cols, CV_32FC1), 1, cv::Mat::ones(PSF.rows, PSF.cols, CV_32FC1), snr, PSF2);
+	cv::gemm(PSF2, row_summator, 1, cv::Mat::zeros(PSF.rows, PSF.cols, PSF.type()), 0, PSF2);
+	cv::gemm(PSF2, cv::Mat::eye(PSF.cols, PSF.cols, PSF.type()), 1, cv::Mat::ones(PSF.rows, PSF.cols, PSF.type()), snr, PSF2);
 	cv::divide(PSF, PSF2, PSF);
 	cv::mulSpectrums(IMG, PSF, PSF, 0);
 	cv::Mat result(img.rows, img.cols, CV_32FC1);
-	cv::idft(PSF, result, cv::DFT_SCALE || cv::DFT_REAL_OUTPUT);
+	cv::idft(PSF, result, cv::DFT_REAL_OUTPUT);;
+	result.convertTo(result, CV_32FC1);
+	cv::divide(result, 255.0, result);
 
 	////roll!!!
-
 
 	IMG.release();
 	psf.release();
@@ -157,3 +168,4 @@ cv::Mat deconvolve(cv::Mat img, bool defocus, int d, int ang, int noise, int sz)
 	PSF2.release();
 	return result;
 }
+
