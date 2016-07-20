@@ -120,7 +120,6 @@ cv::Mat defocus_kernel(int d, int sz){
 	return kern;
 }
 
-
 //deconvolve works with images, read in grayscale mode, 
 //converted to CV_32F and divided by 255
 cv::Mat deconvolve(cv::Mat img, bool defocus, int d, int ang, int noise, int sz){
@@ -135,41 +134,57 @@ cv::Mat deconvolve(cv::Mat img, bool defocus, int d, int ang, int noise, int sz)
 		psf = motion_kernel(ang, d, sz);
 
 	cv::namedWindow("psf", cv::WINDOW_NORMAL);
-	//	cv::imshow("psf", psf);
+	cv::imshow("psf", psf);
 
-	cv::divide(psf, cv::norm(psf, cv::NORM_L1), psf);
+	cv::divide(psf, cv::sum(psf)[0], psf);
 	cv::Mat psf_pad = cv::Mat::zeros(img.rows, img.cols, CV_32FC1);
 	int kh = psf.rows;
 	int kw = psf.cols;
 
-	//	psf_pad(cv::Range(0, kh), cv::Range(0, kw)) = psf;
+
 	cv::Mat ptr = psf_pad.colRange(cv::Range(0, kw)).rowRange(cv::Range(0, kh));
 	psf.copyTo(ptr);
-	cv::imshow("psf", psf_pad);
 
 	cv::Mat PSF;
 	cv::dft(psf_pad, PSF, cv::DFT_COMPLEX_OUTPUT, kh);
-	cv::Mat row_summator = cv::Mat::ones(PSF.cols, PSF.cols, PSF.type());
-	cv::Mat PSF2 = cv::Mat::zeros(PSF.rows, PSF.cols, PSF.type());
-	cv::multiply(PSF, PSF, PSF2);
+/*	cv::Mat row_summator = cv::Mat::ones(PSF.cols, PSF.cols, PSF.type());			//python solution
+	cv::Mat PSF2 = cv::Mat::zeros(PSF.rows, PSF.cols, CV_64FC1);
+	cv::multiply(cv::abs(PSF), cv::abs(PSF), PSF2);
 	cv::gemm(PSF2, row_summator, 1, cv::Mat::zeros(PSF.rows, PSF.cols, PSF.type()), 0, PSF2);
-	cv::gemm(PSF2, cv::Mat::eye(PSF.cols, PSF.cols, PSF.type()), 1, cv::Mat::ones(PSF.rows, PSF.cols, PSF.type()), snr, PSF2);
-	cv::divide(PSF, PSF2, PSF);
+	PSF2 += snr;
+	cv::divide(PSF2, PSF2 + snr, PSF2);
 	cv::mulSpectrums(IMG, PSF, PSF, 0);
 	cv::Mat result(img.rows, img.cols, CV_32FC1);
-	cv::idft(PSF, result, cv::DFT_REAL_OUTPUT);;
-	result.convertTo(result, CV_32FC1);
-	cv::divide(result, 255.0, result);
+	cv::idft(PSF, result, cv::DFT_REAL_OUTPUT + cv::DFT_SCALE);
+*/
+	cv::Mat PSF2 = cv::Mat::zeros(PSF.rows, PSF.cols, PSF.type());					//formula solution
+	cv::mulSpectrums(PSF, PSF, PSF2, 0, true);
+	cv::Mat mat_arr[2];
+	cv::split(PSF2, mat_arr);
+	mat_arr[1] = mat_arr[0];
+	cv::merge(mat_arr, 2, PSF2);
+	cv::divide(IMG, PSF2 + snr, IMG);
+	cv::mulSpectrums(IMG, PSF, IMG, 0, true);
+	cv::Mat result(img.rows, img.cols, CV_32FC1);
+	cv::idft(IMG, result, cv::DFT_REAL_OUTPUT + cv::DFT_SCALE);
 
-	roll_mat(result, kh, kw);
+	try{
+		roll_mat(result, kh, kw);													//error
+	}
+	catch (cv::Exception const& e){
+		std::cerr << " roll error: " << e.what() << std::endl;
+	}
+
+	std::cout << result.rows << " " << result.cols << " " << result.channels() << std::endl;	//test
 
 	IMG.release();
 	psf.release();
 	psf_pad.release();
 	PSF.release();
-	row_summator.release();
+	//	row_summator.release();
 	PSF2.release();
-	move_mat.release();
+	mat_arr[0].release();
+	mat_arr[1].release();
 	return result;
 }
 
