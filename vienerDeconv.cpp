@@ -28,6 +28,7 @@ int main(int argc, char** argv)
 	cv::Mat blurred;
 	cv::Mat defocus_psf;
 	cv::Mat psf;
+//	cv::Mat deconvolved;
 
 	img = cv::imread(filename, CV_LOAD_IMAGE_GRAYSCALE);	//reading and preparing an image for 
 	img.convertTo(img, CV_32FC1);							//further processing. grayscale - important! (1 channel)
@@ -38,7 +39,7 @@ int main(int argc, char** argv)
 	cv::namedWindow("blurred", cv::WINDOW_AUTOSIZE);
 	cv::namedWindow("PSF", cv::WINDOW_NORMAL);
 	cv::namedWindow("defocus_psf", cv::WINDOW_NORMAL);
-
+//	cv::namedWindow("deconvolved", cv::WINDOW_AUTOSIZE);
 															//initial creation of blurred image (border blur)
 	blurred = cv::Mat::zeros(img.rows, img.cols, CV_32FC1);
 
@@ -46,7 +47,9 @@ int main(int argc, char** argv)
 	
 	blur_edge(img, blurred, border_blur_rad);								//border blur
 
-	defocus_psf = defocus_kernel(d, sz);
+//	deconvolved = deconvolve(blurred, true, 25, 90, 10, 65);				//final function (a.k.a. update)
+
+	defocus_psf = defocus_kernel(d, sz);									//defocus psf
 	
 	psf = motion_kernel(angle, d, sz);						//motion psf
 
@@ -54,6 +57,7 @@ int main(int argc, char** argv)
 	cv::imshow("PSF", psf);									//showing the images
 	cv::imshow("blurred", blurred);
 	cv::imshow("defocus_psf", defocus_psf);
+//	cv::imshow("deconvolved", deconvolved);
 
 	cv::waitKey(0);
 
@@ -61,6 +65,7 @@ int main(int argc, char** argv)
 	blurred.release();
 	psf.release();
 	defocus_psf.release();
+//	deconvolved.release();
 
 	cv::destroyAllWindows();								//exit
 	return 0;
@@ -116,4 +121,45 @@ cv::Mat defocus_kernel(int d, int sz){
 	kern.convertTo(kern, CV_32F);
 	cv::divide(kern, 255.0, kern);
 	return kern;
+}
+
+cv::Mat deconvolve(cv::Mat img, bool defocus, int d, int ang, int noise, int sz){
+	double ang_radians = ang * M_PI / 180.;
+	double snr = pow(10, -0.1*noise);
+	cv::Mat IMG;
+	cv::dft(img, IMG, cv::DFT_COMPLEX_OUTPUT);
+	cv::Mat psf;
+
+	psf = defocus_kernel(d, sz);
+
+	cv::namedWindow("psf", cv::WINDOW_NORMAL);
+	cv::imshow("psf", psf);
+	//problems with dft types!
+	cv::divide(psf, cv::norm(psf, cv::NORM_L1), psf);
+	cv::Mat psf_pad = cv::Mat::zeros(img.rows, img.cols, CV_32FC1);
+	int kh = psf.rows;
+	int kw = psf.cols;
+	psf_pad(cv::Range(0, kh), cv::Range(0, kw)) = psf;
+	cv::Mat PSF;
+	cv::dft(psf_pad, PSF, cv::DFT_COMPLEX_OUTPUT, kh);
+	cv::Mat row_summator = cv::Mat::ones(PSF.cols, PSF.cols, CV_32FC1);
+	cv::Mat PSF2 = cv::Mat::zeros(PSF.rows, PSF.cols, CV_32FC1);
+	cv::multiply(PSF, PSF, PSF2);
+	cv::gemm(PSF2, row_summator, 1, cv::Mat::zeros(PSF.rows, PSF.cols, CV_32FC1), 0, PSF2);
+	cv::gemm(PSF2, cv::Mat::eye(PSF.cols, PSF.cols, CV_32FC1), 1, cv::Mat::ones(PSF.rows, PSF.cols, CV_32FC1), snr, PSF2);
+	cv::divide(PSF, PSF2, PSF);
+	cv::mulSpectrums(IMG, PSF, PSF, 0);
+	cv::Mat result(img.rows, img.cols, CV_32FC1);
+	cv::idft(PSF, result, cv::DFT_SCALE || cv::DFT_REAL_OUTPUT);
+
+	////roll!!!
+
+
+	IMG.release();
+	psf.release();
+	psf_pad.release();
+	PSF.release();
+	row_summator.release();
+	PSF2.release();
+	return result;
 }
