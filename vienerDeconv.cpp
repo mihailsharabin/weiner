@@ -5,7 +5,7 @@ cv::Mat motion_kernel(int angle, int d, int sz){
 	cv::Mat tmp = cv::Mat::zeros(d, d, CV_32FC1);
 	cv::Mat move_mat = (cv::Mat_<double>(2, 3) << 1, 0, 0, 0, 1, d / 2);
 	cv::warpAffine(kern, tmp, move_mat, tmp.size());
-	cv::Point2f center(float(d / 2), float(d / 2));
+	cv::Point center(d / 2, d / 2);
 	cv::Mat M = cv::getRotationMatrix2D(center, angle, 1.0);
 	cv::warpAffine(tmp, tmp, M, tmp.size());
 	kern.release();
@@ -161,9 +161,7 @@ cv::Mat deconvolve(cv::Mat img, bool defocus, int d, int ang, int noise, int sz)
 	result.convertTo(result, CV_32FC1);
 	cv::divide(result, 255.0, result);
 
-	//rolling
-	cv::Mat move_mat = (cv::Mat_<double>(2, 3) << 1, 0, -kw / 2, 0, 1, kh / 2);
-	cv::warpAffine(result, result, move_mat, result.size());
+	roll_mat(result, kh, kw);
 
 	IMG.release();
 	psf.release();
@@ -175,3 +173,32 @@ cv::Mat deconvolve(cv::Mat img, bool defocus, int d, int ang, int noise, int sz)
 	return result;
 }
 
+void roll_mat(cv::Mat img, int x, int y){
+	cv::Mat tmp = cv::Mat::zeros(img.rows, img.cols, img.type());
+	
+	cv::Mat tmp1 = img(cv::Rect(0, 0, img.rows, y));
+	cv::Mat tmp2 = tmp(cv::Rect(0, img.cols - y, img.rows, img.cols));
+	tmp1.copyTo(tmp2);
+	tmp1.release();
+	tmp2.release();
+
+	cv::Mat tmp1 = img(cv::Rect(0, y, img.rows, img.cols));
+	cv::Mat tmp2 = tmp(cv::Rect(0, 0, img.rows, img.cols - y));
+	tmp1.copyTo(tmp2);
+	tmp1.release();
+	tmp2.release();
+
+	cv::Mat tmp1 = img(cv::Rect(0, 0, x, img.cols));
+	cv::Mat tmp2 = tmp(cv::Rect(img.rows - x, 0, img.rows, img.cols));
+	tmp1.copyTo(tmp2);
+	tmp1.release();
+	tmp2.release();
+
+	cv::Mat tmp1 = img(cv::Rect(x, 0, img.rows, img.cols));
+	cv::Mat tmp2 = tmp(cv::Rect(0, 0, img.rows - x, img.cols));
+	tmp1.copyTo(tmp2);
+	tmp1.release();
+	tmp2.release();
+	tmp.copyTo(img);
+	tmp.release();
+}
