@@ -197,23 +197,23 @@ void roll_mat(cv::Mat img, int x, int y){
 	tmp1.release();
 	tmp2.release();
 
-	cv::Mat tmp1 = img(cv::Rect(0, y, img.rows, img.cols));
-	cv::Mat tmp2 = tmp(cv::Rect(0, 0, img.rows, img.cols - y));
-	tmp1.copyTo(tmp2);
-	tmp1.release();
-	tmp2.release();
+	cv::Mat tmp3 = img(cv::Rect(0, y, img.rows, img.cols));
+	cv::Mat tmp4 = tmp(cv::Rect(0, 0, img.rows, img.cols - y));
+	tmp3.copyTo(tmp4);
+	tmp3.release();
+	tmp4.release();
 
-	cv::Mat tmp1 = img(cv::Rect(0, 0, x, img.cols));
-	cv::Mat tmp2 = tmp(cv::Rect(img.rows - x, 0, img.rows, img.cols));
-	tmp1.copyTo(tmp2);
-	tmp1.release();
-	tmp2.release();
+	cv::Mat tmp5 = img(cv::Rect(0, 0, x, img.cols));
+	cv::Mat tmp6 = tmp(cv::Rect(img.rows - x, 0, img.rows, img.cols));
+	tmp5.copyTo(tmp6);
+	tmp5.release();
+	tmp6.release();
 
-	cv::Mat tmp1 = img(cv::Rect(x, 0, img.rows, img.cols));
-	cv::Mat tmp2 = tmp(cv::Rect(0, 0, img.rows - x, img.cols));
-	tmp1.copyTo(tmp2);
-	tmp1.release();
-	tmp2.release();
+	cv::Mat tmp7 = img(cv::Rect(x, 0, img.rows, img.cols));
+	cv::Mat tmp8 = tmp(cv::Rect(0, 0, img.rows - x, img.cols));
+	tmp7.copyTo(tmp8);
+	tmp7.release();
+	tmp8.release();
 	tmp.copyTo(img);
 	tmp.release();
 }
