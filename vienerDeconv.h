@@ -6,9 +6,9 @@
 #include <iostream>
 #include <cmath>
 
-#define Pi 3.14159265
 cv::Mat motion_kernel(int angle, int d, int sz);
 void blur_edge(cv::Mat img, cv::Mat blurred, int d);
 int Min(int* arr, int len);
 cv::Mat defocus_kernel(int d, int sz);
 cv::Mat deconvolve(cv::Mat img, bool defocus, int d, int ang, int noise, int sz);
+void roll_mat(cv::Mat img, int x, int y);
