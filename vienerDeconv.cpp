@@ -136,7 +136,7 @@ cv::Mat deconvolve(cv::Mat img, bool defocus, int d, int ang, int noise, int sz)
 	cv::namedWindow("psf", cv::WINDOW_NORMAL);
 	cv::imshow("psf", psf);
 
-	cv::divide(psf, cv::sum(psf)[0], psf);
+//	cv::divide(psf, cv::sum(psf)[0], psf);
 	cv::Mat psf_pad = cv::Mat::zeros(img.rows, img.cols, CV_32FC1);
 	int kh = psf.rows;
 	int kw = psf.cols;
