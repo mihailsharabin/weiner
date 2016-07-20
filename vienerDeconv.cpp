@@ -3,11 +3,14 @@
 cv::Mat motion_kernel(int angle, int d, int sz){
 	cv::Mat kern = cv::Mat::ones(1, d, CV_32FC1);
 	cv::Mat tmp = cv::Mat::zeros(d, d, CV_32FC1);
-	cv::Mat matr = (cv::Mat_<double>(2, 3) << 1, 0, 0, 0, 1, d / 2);
-	cv::warpAffine(kern, tmp, matr, tmp.size());
-	cv::Point2f center(d / 2,  d / 2);
+	cv::Mat move_mat = (cv::Mat_<double>(2, 3) << 1, 0, 0, 0, 1, d / 2);
+	cv::warpAffine(kern, tmp, move_mat, tmp.size());
+	cv::Point2f center(float(d / 2), float(d / 2));
 	cv::Mat M = cv::getRotationMatrix2D(center, angle, 1.0);
 	cv::warpAffine(tmp, tmp, M, tmp.size());
+	kern.release();
+	move_mat.release();
+	M.release();
 	return tmp;
 }
 
@@ -158,7 +161,9 @@ cv::Mat deconvolve(cv::Mat img, bool defocus, int d, int ang, int noise, int sz)
 	result.convertTo(result, CV_32FC1);
 	cv::divide(result, 255.0, result);
 
-	////roll!!!
+	//rolling
+	cv::Mat move_mat = (cv::Mat_<double>(2, 3) << 1, 0, -kw / 2, 0, 1, kh / 2);
+	cv::warpAffine(result, result, move_mat, result.size());
 
 	IMG.release();
 	psf.release();
@@ -166,6 +171,7 @@ cv::Mat deconvolve(cv::Mat img, bool defocus, int d, int ang, int noise, int sz)
 	PSF.release();
 	row_summator.release();
 	PSF2.release();
+	move_mat.release();
 	return result;
 }
 
