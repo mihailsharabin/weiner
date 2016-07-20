@@ -8,3 +8,4 @@
 cv::Mat motion_kernel(int angle, int d, int sz);
 void blur_edge(cv::Mat img, cv::Mat blurred, int d);
 int Min(int* arr, int len);
+cv::Mat defocus_kernel(int d, int sz);

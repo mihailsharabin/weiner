@@ -25,6 +25,9 @@ int main(int argc, char** argv)
 	int sz = 65;
 
 	cv::Mat img;
+	cv::Mat blurred;
+	cv::Mat defocus_psf;
+	cv::Mat psf;
 
 	img = cv::imread(filename, CV_LOAD_IMAGE_GRAYSCALE);	//reading and preparing an image for 
 	img.convertTo(img, CV_32FC1);							//further processing. grayscale - important! (1 channel)
@@ -34,34 +37,36 @@ int main(int argc, char** argv)
 	cv::namedWindow("initial", cv::WINDOW_AUTOSIZE);		//windows creation
 	cv::namedWindow("blurred", cv::WINDOW_AUTOSIZE);
 	cv::namedWindow("PSF", cv::WINDOW_NORMAL);
+	cv::namedWindow("defocus_psf", cv::WINDOW_NORMAL);
 
 															//initial creation of blurred image (border blur)
-	cv::Mat blurred = cv::Mat::zeros(img.rows, img.cols, CV_32FC1);
+	blurred = cv::Mat::zeros(img.rows, img.cols, CV_32FC1);
 
-	int d = 25;												//border blur radious
+	int border_blur_rad = 31;												//border blur radious
 	
-	blur_edge(img, blurred, d);								//border blur
+	blur_edge(img, blurred, border_blur_rad);								//border blur
 
-	cv::Mat psf;
+	defocus_psf = defocus_kernel(d, sz);
 	
 	psf = motion_kernel(angle, d, sz);						//motion psf
 
+	cv::imshow("initial", img);
 	cv::imshow("PSF", psf);									//showing the images
 	cv::imshow("blurred", blurred);
+	cv::imshow("defocus_psf", defocus_psf);
 
 	cv::waitKey(0);
 
 	img.release();											//memory cleaning
 	blurred.release();
 	psf.release();
+	defocus_psf.release();
 
 	cv::destroyAllWindows();								//exit
 	return 0;
 }
 
 void blur_edge(cv::Mat img, cv::Mat blurred, int d){
-	if (!d)
-		d = 31;
 	int height = img.rows;
 	int width = img.cols;
 	cv::Mat img_pad(height + 2 * d, width + 2 * d, CV_32FC1);
@@ -103,4 +108,12 @@ int Min(int* arr, int len){
 	else {
 		return (arr[0] < Min(arr + 1, len - 1)) ? arr[0] : Min(arr + 1, len - 1);
 	}
+}
+
+cv::Mat defocus_kernel(int d, int sz){
+	cv::Mat kern = cv::Mat::zeros(sz, sz, CV_8UC1);
+	cv::circle(kern, cv::Point(sz, sz), d, 255, -1, CV_AA, 1);
+	kern.convertTo(kern, CV_32F);
+	cv::divide(kern, 255.0, kern);
+	return kern;
 }
