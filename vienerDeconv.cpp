@@ -3,10 +3,10 @@
 int main(int argc, char** argv)
 {
 	char* filename = "____!!!!____";						//input some file!!!
-	int angle = 135;
-	int d = 31;
+	int angle = 455;
+	int d = 22;
 	int sz = 65;
-	int noise = 20;
+	int noise = 25;
 
 	cv::Mat img;
 	cv::Mat defocus_psf;
@@ -149,15 +149,7 @@ cv::Mat deconvolve(cv::Mat img, bool defocus, int d, int ang, int noise, int sz)
 	cv::mulSpectrums(IMG, PSF, IMG, 0, true);
 	cv::Mat result(img.rows, img.cols, CV_32FC1);
 	cv::idft(IMG, result, cv::DFT_REAL_OUTPUT + cv::DFT_SCALE);
-
-
-	try{
-		roll_mat(result, kh, kw);
-	}
-	catch (cv::Exception const& e){
-		std::cerr << " roll error: " << e.what() << std::endl;
-	}
-
+	roll_mat(result, kh, kw);
 	IMG.release();
 	psf.release();
 	psf_pad.release();
@@ -170,31 +162,17 @@ cv::Mat deconvolve(cv::Mat img, bool defocus, int d, int ang, int noise, int sz)
 }
 
 void roll_mat(cv::Mat img, int x, int y){
-	cv::Mat tmp = cv::Mat::zeros(img.rows, img.cols, img.type());
-	
-	cv::Mat tmp1 = img(cv::Rect(0, 0, img.rows, y));
-	cv::Mat tmp2 = tmp(cv::Rect(0, img.cols - y, img.rows, img.cols));
-	tmp1.copyTo(tmp2);
-	tmp1.release();
-	tmp2.release();
-
-	cv::Mat tmp3 = img(cv::Rect(0, y, img.rows, img.cols));
-	cv::Mat tmp4 = tmp(cv::Rect(0, 0, img.rows, img.cols - y));
-	tmp3.copyTo(tmp4);
-	tmp3.release();
-	tmp4.release();
-
-	cv::Mat tmp5 = img(cv::Rect(0, 0, x, img.cols));
-	cv::Mat tmp6 = tmp(cv::Rect(img.rows - x, 0, img.rows, img.cols));
-	tmp5.copyTo(tmp6);
-	tmp5.release();
-	tmp6.release();
-
-	cv::Mat tmp7 = img(cv::Rect(x, 0, img.rows, img.cols));
-	cv::Mat tmp8 = tmp(cv::Rect(0, 0, img.rows - x, img.cols));
-	tmp7.copyTo(tmp8);
-	tmp7.release();
-	tmp8.release();
+	cv::Mat tmp = cv::Mat(img.rows, img.cols, img.type());	
+	cv::Mat tmp1;
+	tmp1 = img(cv::Rect(0, 0, img.cols - y, img.rows - x));
+	tmp1.copyTo(tmp(cv::Rect(y, x, img.cols - y, img.rows - x)));
+	tmp1 = img(cv::Rect(img.cols - y, 0, y, img.rows - x));
+	tmp1.copyTo(tmp(cv::Rect(0, x, y, img.rows - x)));
+	tmp1 = img(cv::Rect(0, img.rows - x, img.cols - y, x));
+	tmp1.copyTo(tmp(cv::Rect(y, 0, img.cols - y, x)));
+	tmp1 = img(cv::Rect(img.cols - y, img.rows - x, y, x));
+	tmp1.copyTo(tmp(cv::Rect(0, 0, y, x)));
+	tmp1.release(); 
 	tmp.copyTo(img);
 	tmp.release();
 }
